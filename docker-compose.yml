@@ -1,0 +1,74 @@
+x-logging:
+  &default-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: 100M
+
+services:
+  profile-db:
+    image: postgres:16.2
+    environment:
+      POSTGRES_USER: hospitup_profile
+      POSTGRES_PASSWORD: testprofile
+      POSTGRES_DB: hospitup
+    ports:
+      - 5432:5432
+    volumes:
+      - data:/var/lib/postgresql/data/
+    <<: *default-logging
+    restart: always
+
+  keycloak-db:
+    image: postgres:16.2
+    container_name: keycloak-db
+    environment:
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak
+      POSTGRES_DB: keycloak
+    ports:
+      - 5433:5432  # map host 5433 to container 5432 to avoid port conflict
+    volumes:
+      - keycloak_data:/var/lib/postgresql/data/
+    <<: *default-logging
+    restart: always
+
+
+  keycloak_web:
+    image: quay.io/keycloak/keycloak:26.3
+    container_name: keycloak
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: 8080
+      KC_HOSTNAME_STRICT: false
+      KC_HOSTNAME_STRICT_HTTPS: false
+
+      KC_LOG_LEVEL: info
+      KC_METRICS_ENABLED: true
+      KC_HEALTH_ENABLED: true
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    command: start-dev
+    depends_on:
+      - keycloak-db
+    ports:
+      - 8500:8080
+    <<: *default-logging
+    restart: always
+
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - 1025:1025
+      - 8025:8025
+    <<: *default-logging
+    restart: always
+
+volumes:
+  data:
+  keycloak_data:
